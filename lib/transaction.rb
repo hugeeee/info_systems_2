@@ -27,4 +27,8 @@ attr_accessor :operations, :name, :id, :status, :intent_locks, :next_operation, 
 		end
 			
 	end
+
+	def has_locks?
+
+	end
 end

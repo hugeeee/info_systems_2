@@ -30,6 +30,7 @@ def request_lock lock
 			end
 		end
 	end
+
 	return true
 end
 
@@ -70,7 +71,7 @@ def baseset? record
 	end
 end
 
-@file = File.new "../script.txt"
+@file = File.new "../scripts\ 2012/two.txt"
 
 @transactions = []
 
@@ -120,17 +121,19 @@ for @i in 0..1000
 		if transaction.actual_tick <= @i
 
 			transaction.intent_locks.each do |element|
-				request_lock element
+				if request_lock element
+					transaction.status = :running
+				end
 			end
 
-			if !transaction.transaction_complete?
+			if !transaction.transaction_complete? and transaction.status == :running
 				transaction.operations[transaction.next_operation].perform_operation @db, @log_file
 				transaction.next_operation += 1
 			else
 				# remove the transactions locks if complete
-			#	transaction.intent_locks.each do |lock|
-			#		@record_locks[lock.baseset].delete lock.lock_type
-			#	end
+				transaction.intent_locks.each do |lock|
+					@intent_locks[lock.baseset].delete lock.lock_type
+				end
 			end
 		end
 	end
