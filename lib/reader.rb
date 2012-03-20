@@ -120,6 +120,8 @@ for @i in 0..1000
 	@transactions.each do |transaction|
 		if transaction.actual_tick <= @i
 
+			# transaction requests it's locks
+			# if there is a problem, make sure the lock for same trans is not re entered
 			transaction.intent_locks.each do |element|
 				if request_lock element
 					transaction.status = :running

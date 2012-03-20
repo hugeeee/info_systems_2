@@ -120,6 +120,7 @@ for @i in 0..1000
 	@transactions.each do |transaction|
 		if transaction.actual_tick <= @i
 
+			# transaction requests it's locks
 			transaction.intent_locks.each do |element|
 				if request_lock element
 					transaction.status = :running
@@ -137,7 +138,6 @@ for @i in 0..1000
 			end
 		end
 	end
-	puts "silly goose"
 	
 end
 
