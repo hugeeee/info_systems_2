@@ -17,12 +17,29 @@ end
 :no_access => {:X =>true, :S =>true, :IS =>true, :SIX => true, :IX =>true, :no_access=>true}
 }
 
+def request_lock lock
+
+	if @intent_locks[lock.baseset].empty?
+		@intent_locks[lock.baseset] << lock.lock_type
+	else
+		@intent_locks[lock.baseset].each do |element|
+			if @lock_matrix[element][lock.baseset]
+				@intent_locks[lock.baseset] << lock.lock_type
+			else
+				return false
+			end
+		end
+	end
+	return true
+end
+
 @db = [] # store records here
 for i in 0..1000
 	@db[i] = 0
 end
 
 @actual_tick = 0
+@id = 0
 @log_file = []
 
 # this keeps track of the locks on each baseset
@@ -41,15 +58,15 @@ def baseset? record
 	elsif record.between?(400, 499)
 		:E
 	elsif record.between?(500, 599)
-		:D
-	elsif record.between?(600, 699)
-		:E
-	elsif record.between?(700, 799)
 		:F
-	elsif record.between?(800, 899)
+	elsif record.between?(600, 699)
 		:G
-	elsif record.between?(900, 999)
+	elsif record.between?(700, 799)
 		:H
+	elsif record.between?(800, 899)
+		:I
+	elsif record.between?(900, 999)
+		:J
 	end
 end
 
@@ -69,7 +86,8 @@ while line = @file.gets
 	@actual_tick += line.split[0].to_i
 
 	puts @actual_tick
-	@transaction = Transaction.new line.split[0], @actual_tick
+	@transaction = Transaction.new @id, line.split[0], @actual_tick
+	@id += 1
 	# loop through the line to init locks
 	# need to increment as a pair
 	i = 0
@@ -95,11 +113,15 @@ end
 ###### :TODO Perform clock here
 #########################################################
 
-for i in 0..1000
+for @i in 0..1000
 #	puts "Press enter"
 	#nothing = gets
 	@transactions.each do |transaction|
-		if transaction.actual_tick <= i
+		if transaction.actual_tick <= @i
+
+			transaction.intent_locks.each do |element|
+				
+			end
 
 			if !transaction.transaction_complete?
 				transaction.operations[transaction.next_operation].perform_operation @db, @log_file
@@ -113,4 +135,16 @@ for i in 0..1000
 		end
 	end
 	
+end
+
+# tick all transactions have been completed
+puts "final tick = #{@i}"
+
+# status of all transactions
+@transactions.each do |element|
+	puts "transaction #{element.id} status = #{element.status}"
+end
+
+@log_file.each do |element|
+	puts "record = #{element.record_location} | value =#{@db[element.record_location]}"
 end

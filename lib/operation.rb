@@ -1,5 +1,7 @@
 class Operation
 
+	attr_accessor :record_location
+
 	def initialize record_location, opcode
 		@record_location = record_location
 		@opcode = opcode.to_sym
