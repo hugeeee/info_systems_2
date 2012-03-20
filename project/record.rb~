@@ -1,7 +1,0 @@
-class Record
-	attr_accessor :id, :value
-
-	def initialize
-		@value = 0
-	end
-end
