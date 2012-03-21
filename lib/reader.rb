@@ -17,13 +17,17 @@ end
 :no_access => {:X =>true, :S =>true, :IS =>true, :SIX => true, :IX =>true, :no_access=>true}
 }
 
+# checks if the lock requested is allowed, and if so it is applied
 def request_lock lock
 
 	if @intent_locks[lock.baseset].empty?
 		@intent_locks[lock.baseset] << lock.lock_type
+		puts @intent_locks
 	else
-		@intent_locks[lock.baseset].each do |element|
-			if @lock_matrix[element][lock.baseset]
+		cloned_locks = @intent_locks[lock.baseset].clone
+		cloned_locks.each do |element|
+			puts @lock_matrix[element][lock.lock_type]
+			if @lock_matrix[element][lock.lock_type]
 				@intent_locks[lock.baseset] << lock.lock_type
 			else
 				return false
@@ -39,12 +43,13 @@ for i in 0..1000
 	@db[i] = 0
 end
 
+# track ticks and id's
 @actual_tick = 0
 @id = 0
 @log_file = []
 
 # this keeps track of the locks on each baseset
-@intent_locks = {:A => [], :B => [], :C => [], :D => [], :E => [], :F => [], :H => [], :I => [], :J => []}
+@intent_locks = {:A => [], :B => [], :C => [], :D => [], :E => [], :F => [], :G => [], :H => [], :I => [], :J => []}
 
 # this method is to determine which baseset the record being accessed is
 def baseset? record
@@ -71,19 +76,18 @@ def baseset? record
 	end
 end
 
-@file = File.new "../scripts\ 2012/two.txt"
-
+#################################################################
+#### 		Read the script and create transaction instances
+################################################################
+@file = File.new "../scripts\ 2012/five.txt"
 @transactions = []
 
-# this loop reads the script and creates a list of transactions
 while line = @file.gets
 
 	if line_is_empty? line
 		next	# skips to the next iteration
 	end
 	
-	# total up the ticks
-	# :TODO Notice here if things break
 	@actual_tick += line.split[0].to_i
 
 	puts @actual_tick
@@ -109,47 +113,77 @@ while line = @file.gets
 	@transactions << @transaction
 
 end
+# end of reading transactions
 
 #########################################################
-###### :TODO Perform clock here
+######  Perform clock here
 #########################################################
+@completed_trans = 0
 
-for @i in 0..1000
+for @tick in 0..100
+	
 #	puts "Press enter"
 	#nothing = gets
 	@transactions.each do |transaction|
-		if transaction.actual_tick <= @i
+		if transaction.actual_tick <= @tick
+			
+			if !transaction.locks_applied
 
-			# transaction requests it's locks
-			# if there is a problem, make sure the lock for same trans is not re entered
-			transaction.intent_locks.each do |element|
-				if request_lock element
-					transaction.status = :running
+				transaction.intent_locks.each do |element|
+					puts "requesting locks for #{transaction.id} baseset = #
+															{element.baseset} type = #	{element.lock_type}"
+					if request_lock element
+						puts "locks applied for #{transaction.id}"
+						transaction.status = :running
+						transaction.locks_applied = true
+					else
+						transaction.status = :elegible
+						transaction.locks_applied = false
+						transaction.intent_locks.each do |lock|
+							@intent_locks[lock.baseset].delete lock.lock_type
+							puts "removing locks for #{transaction.id} because of MATRIX"
+							puts @intent_locks
+						end
+					end
 				end
 			end
-
+	
 			if !transaction.transaction_complete? and transaction.status == :running
+				puts "working on #{transaction.id} cycle = #{@tick}"
 				transaction.operations[transaction.next_operation].perform_operation @db, @log_file
 				transaction.next_operation += 1
-			else
+			elsif transaction.transaction_complete? and !transaction.locks_removed
 				# remove the transactions locks if complete
+				@completed_trans += 1
 				transaction.intent_locks.each do |lock|
 					@intent_locks[lock.baseset].delete lock.lock_type
+					puts "removing locks for #{transaction.id} because COMPLETE"
 				end
+				transaction.locks_removed = true
 			end
 		end
 	end
-	
-end
+
+	if @transactions.size == @completed_trans
+		puts "ALL TRANSACTIONS COMPLETE"
+		break
+	end
+
+end # end of clock
+
+##############################################################
+#####		Print out results
+##############################################################
 
 # tick all transactions have been completed
-puts "final tick = #{@i}"
+puts "final tick = #{@tick}"
 
 # status of all transactions
 @transactions.each do |element|
 	puts "transaction #{element.id} status = #{element.status}"
 end
 
-@log_file.each do |element|
-	puts "record = #{element.record_location} | value =#{@db[element.record_location]}"
-end
+#@log_file.each do |element|
+#	puts "record = #{element.record_location} | value =#{@db[element.record_location]}"
+#end
+
