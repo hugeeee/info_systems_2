@@ -38,6 +38,16 @@ def request_lock lock
 	return true
 end
 
+# Rollback
+def rollback transaction, db, log_file
+	while transaction.next_operation >= 0
+		transaction.operations[next_operation].undo db, log_file
+		next_operation -= 1
+		transaction.status = :eligible
+	end
+	
+end
+
 @db = [] # store records here
 for i in 0..1000
 	@db[i] = 0
@@ -90,7 +100,6 @@ while line = @file.gets
 	
 	@actual_tick += line.split[0].to_i
 
-	puts @actual_tick
 	@transaction = Transaction.new @id, line.split[0], @actual_tick
 	@id += 1
 	# loop through the line to init locks
@@ -119,25 +128,24 @@ end
 ######  Perform clock here
 #########################################################
 @completed_trans = 0
+@completed_operations = 0
+@rollbacks_made = 0
 
 for @tick in 0..100
 	
-#	puts "Press enter"
-	#nothing = gets
 	@transactions.each do |transaction|
 		if transaction.actual_tick <= @tick
 			
 			if !transaction.locks_applied
 
 				transaction.intent_locks.each do |element|
-					puts "requesting locks for #{transaction.id} baseset = #
-															{element.baseset} type = #	{element.lock_type}"
+					puts "requesting locks for #{transaction.id} baseset = #{element.baseset} type = #{element.lock_type}"
 					if request_lock element
 						puts "locks applied for #{transaction.id}"
 						transaction.status = :running
 						transaction.locks_applied = true
 					else
-						transaction.status = :elegible
+						transaction.status = :eligible
 						transaction.locks_applied = false
 						transaction.intent_locks.each do |lock|
 							@intent_locks[lock.baseset].delete lock.lock_type
@@ -151,6 +159,7 @@ for @tick in 0..100
 			if !transaction.transaction_complete? and transaction.status == :running
 				puts "working on #{transaction.id} cycle = #{@tick}"
 				transaction.operations[transaction.next_operation].perform_operation @db, @log_file
+				@completed_operations += 1
 				transaction.next_operation += 1
 			elsif transaction.transaction_complete? and !transaction.locks_removed
 				# remove the transactions locks if complete
@@ -169,7 +178,7 @@ for @tick in 0..100
 		break
 	end
 
-end
+end # end of clock
 
 ##############################################################
 #####		Print out results
@@ -183,7 +192,16 @@ puts "final tick = #{@tick}"
 	puts "transaction #{element.id} status = #{element.status}"
 end
 
-#@log_file.each do |element|
-#	puts "record = #{element.record_location} | value =#{@db[element.record_location]}"
-#end
+puts "operations performed = #{@completed_operations}"
+
+@changed_records = []
+@log_file.each do |element|
+	if !@changed_records.include? element.record_location
+		@changed_records << element.record_location
+	end
+end
+
+@changed_records.each do |element|
+	puts "Record #{element} || value = #{@db[element]}"
+end
 

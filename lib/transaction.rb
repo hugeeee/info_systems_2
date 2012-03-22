@@ -14,7 +14,7 @@ attr_accessor :operations, :name, :id, :status, :intent_locks, :next_operation,
 		
 		@intent_locks_applied = [] # not used
 
-		@status = :elegible
+		@status = :eligible
 		@operations = []
 		@next_operation = 0
 	end
