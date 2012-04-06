@@ -139,9 +139,7 @@ for @tick in 0..100
 			if !transaction.locks_applied
 
 				transaction.intent_locks.each do |element|
-					puts "requesting locks for #{transaction.id} baseset = #{element.baseset} type = #{element.lock_type}"
 					if request_lock element
-						puts "locks applied for #{transaction.id}"
 						transaction.status = :running
 						transaction.locks_applied = true
 					else
@@ -149,15 +147,13 @@ for @tick in 0..100
 						transaction.locks_applied = false
 						transaction.intent_locks.each do |lock|
 							@intent_locks[lock.baseset].delete lock.lock_type
-							puts "removing locks for #{transaction.id} because of MATRIX"
-							puts @intent_locks
 						end
 					end
 				end
 			end
 	
 			if !transaction.transaction_complete? and transaction.status == :running
-				puts "working on #{transaction.id} cycle = #{@tick}"
+
 				transaction.operations[transaction.next_operation].perform_operation @db, @log_file
 				@completed_operations += 1
 				transaction.next_operation += 1
@@ -166,7 +162,7 @@ for @tick in 0..100
 				@completed_trans += 1
 				transaction.intent_locks.each do |lock|
 					@intent_locks[lock.baseset].delete lock.lock_type
-					puts "removing locks for #{transaction.id} because COMPLETE"
+
 				end
 				transaction.locks_removed = true
 			end
@@ -174,7 +170,6 @@ for @tick in 0..100
 	end
 
 	if @transactions.size == @completed_trans
-		puts "ALL TRANSACTIONS COMPLETE"
 		break
 	end
 
